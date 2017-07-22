@@ -36,9 +36,8 @@ public class GameClient {
 		if(c != null && server != null) {
 			while(true) {
 				String message = c.waitForMessage();
-				if(message != null) {
-					System.out.println(message);
-				}
+				System.out.println(message);
+				c.say(in.nextLine());
 			}
 		}
 	}

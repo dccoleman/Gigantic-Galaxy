@@ -38,10 +38,16 @@ public class Server {
 			}
 			
 			if(client != null) {
+				int i = 0;
 				c = new Communicator(client);
-				
-				c.say("Hello client!");
-				
+				String response;
+				while(true) {
+					
+					c.say(Integer.toString(++i));
+					
+					if((response = c.waitForMessage()) == null) break;
+					System.out.println(response);
+				}
 			}
 		}
 		System.out.println("Run finished!");
