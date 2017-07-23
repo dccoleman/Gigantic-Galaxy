@@ -24,7 +24,7 @@ public class Server {
 			e.printStackTrace();
 		}
 		
-		g = new Galaxy(100);
+		g = new Galaxy(1000,1.2);
 	}
 	
 	public void run() {

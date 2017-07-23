@@ -5,45 +5,55 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
+import com.dccoleman.graph.EdgeData;
 import com.dccoleman.graph.Graph;
 
 public class Galaxy {
-	private final double CONNECTIVITY = .4;
 	
 	private final static int MAX_FUEL_USE = 4;
 	
 	private final int numSectors;
-	
+	private final long numPaths;
 	private Graph<Sector> galaxy;
 	
-	public Galaxy(int numSectors) {
+	public Galaxy(int numSectors, double pathFactor) {
 		this.numSectors = numSectors;
+		int maxPaths = (numSectors * (numSectors -1))/2;
+		this.numPaths = Math.round(numSectors * pathFactor > maxPaths ? maxPaths : numSectors * pathFactor);
+		
+		System.out.println("Generating " + numSectors + " sectors with " + numPaths + " paths");
 		
 		generateBoard();
-		
-		//System.out.println(galaxy);
 	}
 	
 	private void generateBoard() {
 		galaxy = new Graph<>();
 		
-		List<Sector> created = generateSectors();
+		//Generate all sectors
+		generateSectors();
 		
-		generateNPaths(created, null, numSectors);
+		int mstCount;
+		long randomCount;
+		//Edge generation algorithm
+		System.out.println("Generated " + (mstCount = generateMST()) + " paths as part of the mst");
 		
-		List<List<Sector>> discon;
-		while((discon = galaxy.getAllPartitions()).size() > 1) {
-			
-			System.out.println("Found " + discon.size() + " disconnected graphs");
-			List<Sector> l = discon.get(ThreadLocalRandom.current().nextInt(0, discon.size()));
-			List<Sector> center = discon.get(ThreadLocalRandom.current().nextInt(0, discon.size()));
-			if(l.equals(center)) continue;
-			System.out.println("L " + l + " center " + center);
-			generateNPaths(l, center, 1);
+		//add random paths
+		System.out.println("Generated " + (randomCount = addRandomPaths(mstCount)) + " paths randomly");
+		
+		System.out.println("Generated " + (randomCount + mstCount) + " total paths");
+		
+		int count = 0;
+		int sum = 0;
+		int max = 0;
+		int current = 0;
+		for(Sector s : galaxy.getAllNodes()) {
+			current = galaxy.getCardinalityOfNode(s);
+			sum += current;
+			if(current > max) max = current;
+			count++;
 		}
-		
-		//print out list of nodes w/cardinality > 3
-		System.out.println(galaxy.getNodeWithCardinality(3));
+		System.out.println("Average cardinality is " + sum/count);
+		System.out.println("Maximum cardinality is " + max);
 		
 		try {
 			galaxy.toCSV("C:\\Users\\Bacon\\Desktop");
@@ -53,36 +63,66 @@ public class Galaxy {
 		}
 	}
 
-	private void generateNPaths(List<Sector> first, List<Sector> second, int n) {
-		if(second == null) second = first;
-		for(int i = 0; i < n; i++) {
-			
-			int r1, r2;
-			r1 = ThreadLocalRandom.current().nextInt(0, first.size());
-			r2 = ThreadLocalRandom.current().nextInt(0, second.size());
-			
-			if((first.size() == 1 && second.size() == 99) || (first.size() == 99 && second.size() == 1)) {
-				System.out.println("stuck as a duck in muck");
+	private long addRandomPaths(long pathCount) {
+		List<Sector> sectors = galaxy.getAllNodes();
+		
+		long numGeneratedHere = 0;
+		
+		//generate all possible paths then randomly pull from them
+		List<EdgeData<Sector>> generated = new ArrayList<>();
+		for(int i = 0; i < sectors.size(); i++) {
+			for(int j = i; j < sectors.size(); j++) {
+				if(!sectors.get(i).equals(sectors.get(j))) {
+					generated.add(new EdgeData<Sector>(sectors.get(i),sectors.get(j),0));	
+				}
 			}
-			
-			
-			//can't generate edge from node to itself
-			while(r1 == r2) {
-				if(first.size() == 1 && second.size() == 1) break;
-				r1 = ThreadLocalRandom.current().nextInt(0, first.size());
-				r2 = ThreadLocalRandom.current().nextInt(0, second.size());
-			}
-			
-			//Roll to see if it satisfies the connectivity requirement
-			if(Math.random() < CONNECTIVITY || n == 1) {
-				int weight = ThreadLocalRandom.current().nextInt(1, MAX_FUEL_USE);
-				
-				galaxy.addEdge(new Sector(r1), new Sector(r2), weight);
-			}
-			
-			if((first.size() == 1 && second.size() > 1) || (first.size() > 1 && second.size() == 1)) break;
 		}
 		
+		while(pathCount < numPaths) {
+			EdgeData<Sector> e = popRandomEdgeData(generated);
+			
+			//System.out.println("Adding edge number " + pathCount);
+			galaxy.addEdge(e.getV1(), e.getV2(), getRandomWeight());
+			
+			pathCount++;
+			numGeneratedHere++;
+			
+		}
+		
+		return numGeneratedHere;
+	}
+
+	private EdgeData<Sector> popRandomEdgeData(List<EdgeData<Sector>> l) {
+		return l.remove(ThreadLocalRandom.current().nextInt(0,l.size()));
+	}
+
+	private int generateMST() {
+		List<Sector> created = galaxy.getAllNodes();
+		List<Sector> visited = new ArrayList<>();
+		Sector current = popRandomSector(created);
+		visited.add(current);
+		
+		int pathCount = 0;
+		
+		while(created.size() > 0) {
+			Sector neighbor = popRandomSector(created);
+			if(!visited.contains(neighbor)) {
+				visited.add(neighbor);
+				galaxy.addEdge(current, neighbor, getRandomWeight());
+				current = neighbor;
+				pathCount++;
+			}
+		}
+		
+		return pathCount;
+	}
+
+	private int getRandomWeight() {
+		return ThreadLocalRandom.current().nextInt(0,MAX_FUEL_USE);
+	}
+
+	private Sector popRandomSector(List<Sector> l) {
+		return l.remove(ThreadLocalRandom.current().nextInt(0,l.size()));
 	}
 
 	private List<Sector> generateSectors() {
@@ -90,8 +130,8 @@ public class Galaxy {
 		
 		int id = 0;
 		for(int i = 0; i < numSectors; i++) {
-			System.out.println("Generating sector for " + i);
-			Sector s = new Sector(id++);
+			//System.out.println("Generating sector for " + i);
+			Sector s = new BasicSector(id++);
 			galaxy.addVertex(s);
 			generated.add(s);
 		}

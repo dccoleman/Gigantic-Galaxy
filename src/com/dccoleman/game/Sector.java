@@ -1,6 +1,6 @@
 package com.dccoleman.game;
 
-public class Sector implements Comparable<Sector> {
+public abstract class Sector implements Comparable<Sector> {
 	public SectorType type;
 	
 	private final long sector_id;

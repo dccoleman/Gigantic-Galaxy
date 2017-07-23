@@ -5,9 +5,12 @@ import java.io.FileNotFoundException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 
 import com.dccoleman.game.Sector;
+import com.dccoleman.graph.EdgeData;
 
+//A Java generics implementation of an edge-weighted graph
 public class Graph<T extends Comparable<T>> {
 	private List<Vertex> vertices;
 	private List<Edge> edges;
@@ -17,15 +20,96 @@ public class Graph<T extends Comparable<T>> {
 		edges = new ArrayList<>();
 	}
 	
+	//These are public interface methods. Just dump your types in W/ the weight!
 	public void addEdge(T v1, T v2, int weight) {
 		addEdge(new Vertex(v1), new Vertex(v2), weight);
 	}
 	
+	public boolean edgeExists(T t1, T t2) {
+		return getEdge(new Vertex(t1), new Vertex(t2)) != null;
+	}
+	
+	public EdgeData<T> getEdge(T t1, T t2) {
+		Graph<T>.Edge e = getEdge(new Vertex(t1), new Vertex(t2));
+		EdgeData<T> ret = null;
+		if(e != null) {
+			ret = new EdgeData<T>(t1, t2, e.getWeight());
+		}
+		return ret;
+	}
+	
+	//To add a vertex
 	public void addVertex(T v) {
 		addVertex(new Vertex(v));
 	}
 	
-	public Edge getEdge(Vertex v1, Vertex v2) {
+	//Returns all objects stored in the graph
+	public List<T> getAllNodes() {
+		List<T> ret = new ArrayList<>();
+		for(Vertex v : vertices) {
+			ret.add(v.getValue());
+		}
+		
+		return ret;
+	}
+	
+	//Returns a list of lists of all distinct partitions in the graph
+	public List<List<T>> getAllPartitions() {
+		int numFound = 0;
+		List<List<T>> nodes = new ArrayList<>();
+		for(Vertex v : vertices) {
+			if(v.getMarked_id() == -1) {
+				mark(v,numFound);
+				numFound++;
+			}
+		}
+		//If there's more than one partition (i.e the graph is split somehow)
+		if(numFound > 1) {
+			for(int i = 0; i < numFound; i++) {
+				nodes.add(new ArrayList<T>());
+			}
+			
+			for(Vertex v : vertices) {
+				nodes.get(v.marked_id).add(v.getValue());
+				v.setMarked_id(-1);
+			}
+		}
+		
+		return nodes;
+	}
+	
+	//Returns a list of all nodes with the given cardinality
+	public List<T> getNodeWithCardinality(int c) {
+		List<T> cardinality = new ArrayList<>();
+		for(Vertex v : vertices) {
+			if(v.getAdjacentEdges().size() > c) {
+				cardinality.add(v.getValue());
+			}
+		}
+		return cardinality;
+	}
+	
+	//Returns cardinality of the specified node
+	public int getCardinalityOfNode(T t) {
+		Vertex v = new Vertex(t);
+		if(vertices.contains(v)) {
+			return vertices.get(vertices.indexOf(v)).getAdjacentVertices().size();
+		}
+		return -1;
+	}
+	
+	//Returns a random neighbor of the given node
+	public T getRandomNeighborOf(T in) {
+		Vertex search = new Vertex(in);
+		if(vertices.contains(search)) {
+			List<Vertex> adj = vertices.get(vertices.indexOf(search)).getAdjacentVertices();
+			return vertices.get(vertices.indexOf(adj.get(ThreadLocalRandom.current().nextInt(0,adj.size())))).getValue();
+		} else {
+			return null;
+		}
+	}
+	
+	private Edge getEdge(Vertex v1, Vertex v2) {
 		if(v1 == v2) return null;
 		for(Edge e : edges) {
 			if(e.containsVertex(v1) && e.containsVertex(v2)) {
@@ -57,30 +141,7 @@ public class Graph<T extends Comparable<T>> {
 		}
 	}
 	
-	public List<List<T>> getAllPartitions() {
-		int numFound = 0;
-		List<List<T>> nodes = new ArrayList<>();
-		for(Vertex v : vertices) {
-			if(v.getMarked_id() == -1) {
-				mark(v,numFound);
-				numFound++;
-			}
-		}
-		
-		if(numFound > 1) {
-			for(int i = 0; i < numFound; i++) {
-				nodes.add(new ArrayList<T>());
-			}
-			
-			for(Vertex v : vertices) {
-				nodes.get(v.marked_id).add(v.getValue());
-				v.setMarked_id(-1);
-			}
-		}
-		
-		return nodes;
-	}
-	
+	//Used to search all nodes for a potential disconnected section
 	private void mark(Vertex v, int i) {
 		if(v.getMarked_id() == -1) {
 			v.setMarked_id(i);
@@ -89,16 +150,6 @@ public class Graph<T extends Comparable<T>> {
 				mark(vertices.get(vertices.indexOf(v1)),i);
 			}
 		}
-	}
-	
-	public List<T> getNodeWithCardinality(int c) {
-		List<T> cardinality = new ArrayList<>();
-		for(Vertex v : vertices) {
-			if(v.getAdjacentEdges().size() > c) {
-				cardinality.add(v.getValue());
-			}
-		}
-		return cardinality;
 	}
 	
 	@Override
@@ -145,7 +196,7 @@ public class Graph<T extends Comparable<T>> {
 		f.close();
 	}
 	
-	public class Vertex implements Comparable<Vertex>{
+	private class Vertex implements Comparable<Vertex>{
 		private T value;
 		private List<Edge> adjacentEdges;
 		private List<Vertex> adjacentVertices;
@@ -168,10 +219,6 @@ public class Graph<T extends Comparable<T>> {
 		
 		public T getValue() {
 			return value;
-		}
-		
-		public void setValue(T value) {
-			this.value = value;
 		}
 		
 		public List<Edge> getAdjacentEdges() {
@@ -205,6 +252,7 @@ public class Graph<T extends Comparable<T>> {
 		public boolean equals(Object o) {
 			if(o == null) return false;
 			if(o.getClass() == Vertex.class) {
+				@SuppressWarnings("unchecked")
 				Vertex o2 = (Vertex) o;
 				return this.getValue().equals(o2.getValue());
 			} else {
@@ -213,7 +261,7 @@ public class Graph<T extends Comparable<T>> {
 		}
 	}
 	
-	public class Edge {
+	private class Edge {
 		private List<Vertex> vertices;
 		private int weight;
 		
