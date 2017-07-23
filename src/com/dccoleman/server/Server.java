@@ -9,8 +9,6 @@ import com.dccoleman.game.Galaxy;
 
 public class Server {
 	
-	private int port;
-	
 	private ServerSocket server;
 	private Socket client;
 	
@@ -19,8 +17,6 @@ public class Server {
 	private Galaxy g;
 	
 	public Server(int port) {
-		this.port = port;
-		
 		try {
 			server = new ServerSocket(port);
 		} catch (IOException e) {
@@ -28,7 +24,7 @@ public class Server {
 			e.printStackTrace();
 		}
 		
-		g = new Galaxy(10,10);
+		g = new Galaxy(100);
 	}
 	
 	public void run() {

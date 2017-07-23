@@ -24,9 +24,7 @@ public class Driver {
 			System.out.println("Server Initializing");
 			Server server = new Server(port);
 			server.run();
+			break;
 		}
-		
-
 	}
-
 }
