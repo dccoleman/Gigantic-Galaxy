@@ -23,7 +23,6 @@ public class Driver {
 		case "Server":
 			System.out.println("Server Initializing");
 			Server server = new Server(port);
-			server.setUp();
 			server.run();
 		}
 		

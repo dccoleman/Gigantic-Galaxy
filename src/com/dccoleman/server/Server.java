@@ -5,6 +5,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 import com.dccoleman.communication.Communicator;
+import com.dccoleman.game.Galaxy;
 
 public class Server {
 	
@@ -15,17 +16,19 @@ public class Server {
 	
 	private Communicator c;
 	
+	private Galaxy g;
+	
 	public Server(int port) {
 		this.port = port;
-	}
-	
-	public void setUp() {
+		
 		try {
 			server = new ServerSocket(port);
 		} catch (IOException e) {
 			System.out.println("Error opening socket");
 			e.printStackTrace();
 		}
+		
+		g = new Galaxy(10,10);
 	}
 	
 	public void run() {
